@@ -1,0 +1,51 @@
+<?php
+
+/**
+ * @file
+ * Contains indiecommerce_events hooks.
+ */
+
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\field\FieldStorageConfigInterface;
+use Drupal\node\Entity\Node;
+use Drupal\save_event_location\FormAlter\EventInstanceFormAlter;
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter() for eventinstance_form.
+ */
+function save_event_location_form_eventinstance_form_alter(array &$form, FormStateInterface $form_state) {
+  \Drupal::classResolver(EventInstanceFormAlter::class)->alter($form, $form_state);
+}
+
+/**
+ * Values for Other Location dropdown on events.
+ *
+ * @param \Drupal\field\FieldStorageConfigInterface $definition
+ *   The field storage definition.
+ * @param \Drupal\Core\Entity\EntityInterface|null $entity
+ *   (Optional) The entity that contains the field.
+ * @param bool $cacheable
+ *   (Optional) Whether the result is cacheable or not.
+ *
+ * @return array
+ *   The options for the event locations field.
+ */
+function save_event_location_saved_other_location_values(FieldStorageConfigInterface $definition, ?EntityInterface $entity = NULL, bool $cacheable = TRUE): array {
+  // Pull saved event_location nodes and return the addresses as select values.
+  $saved_locations = [];
+  $nids = \Drupal::entityQuery('node')
+    ->accessCheck(TRUE)
+    ->condition('type', 'event_location')
+    ->condition('status', 1)
+    ->sort('created', 'DESC')
+    ->execute();
+  if (!empty($nids)) {
+    $event_location_nodes = Node::loadMultiple($nids);
+    foreach ($event_location_nodes as $node) {
+      $saved_locations[$node->id()] = $node->label();
+    }
+  }
+  // Add default value for select.
+  $saved_locations = ['_new_address' => t('+ Enter a new address')] + $saved_locations;
+  return $saved_locations;
+}
